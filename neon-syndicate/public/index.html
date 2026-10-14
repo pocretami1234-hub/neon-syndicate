@@ -1,0 +1,100 @@
+
+if (localPlayer.role === 'FUGITIVE' && Math.hypot(localPlayer.x - 300, localPlayer.y - 300) > 350) {
+localPlayer.role = 'SINDICALIST';
+}
+if (localPlayer.role === 'SINDICALIST' && localPlayer.bag === 0) {
+let bq = zones.bov_quimica;
+if (!serverRobberies.bov_quimica?.locked && localPlayer.x > bq.x && localPlayer.x < bq.x+bq.w && localPlayer.y > bq.y && localPlayer.y < bq.y+bq.h) {
+btn.style.display = 'block'; btn.innerText = "Sifonar Compuestos Químicos";
+btn.onclick = () => socket.emit('tryRobbery', 'bov_quimica');
+}
+let fu = zones.fab_uranio;
+if (!serverRobberies.fab_uranio?.locked && localPlayer.x > fu.x && localPlayer.x < fu.x+fu.w && localPlayer.y > fu.y && localPlayer.y < fu.y+fu.h) {
+btn.style.display = 'block'; btn.innerText = "Bypass de Seguridad Digital";
+btn.onclick = () => startPuzzle();
+}
+}
+let vc = zones.volcan;
+if (localPlayer.bag > 0 && localPlayer.x > vc.x && localPlayer.x < vc.x+vc.w && localPlayer.y > vc.y && localPlayer.y < vc.y+vc.h) {
+btn.style.display = 'block'; btn.innerText = "Subir Datos a la Red Oscura";
+btn.onclick = () => { localPlayer.cash += localPlayer.bag; localPlayer.bag = 0; };
+}
+document.getElementById('txt-role').innerText = localPlayer.role === 'FUGITIVE' ? 'Fugitivo' : 'Miembro Sindicato';
+document.getElementById('txt-role').style.color = localPlayer.role === 'FUGITIVE' ? '#ffcc00' : '#00ffcc';
+document.getElementById('txt-cash').innerText = $${localPlayer.cash};
+document.getElementById('bag-fill').style.width = (localPlayer.bag > 0 ? 100 : 0) + '%';
+let cdStr = "";
+let ahora = Date.now();
+for (let k in serverRobberies) {
+if (serverRobberies[k]?.locked) {
+let mins = Math.ceil((serverRobberies[k].cooldownEnd - ahora) / 1000 / 60);
+cdStr += 🔒 ${zones[k].name}: Bloqueado (~${mins} min)<br>;
+} else {
+cdStr += 🔓 ${zones[k].name}: En Línea<br>;
+}
+}
+document.getElementById('cooldowns-info').innerHTML = cdStr;
+}
+function draw() {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+let camX = canvas.width / 2 - localPlayer.x;
+let camY = canvas.height / 2 - localPlayer.y;
+ctx.save();
+ctx.translate(camX, camY);
+ctx.fillStyle = '#020205';
+ctx.fillRect(0, 0, MAP_SIZE, MAP_SIZE);
+// Rejas perimetrales de estética ciberpunk
+ctx.strokeStyle = '#111122'; ctx.lineWidth = 4;
+ctx.strokeRect(0, 0, MAP_SIZE, MAP_SIZE);
+Object.keys(zones).forEach(k => {
+let z = zones[k];
+if (z.x + z.w + camX > 0 && z.x + camX < canvas.width && z.y + z.h + camY > 0 && z.y + camY < canvas.height) {
+ctx.fillStyle = z.color;
+ctx.fillRect(z.x, z.y, z.w, z.h);
+ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 1; ctx.strokeRect(z.x, z.y, z.w, z.h);
+ctx.fillStyle = '#00ffcc'; ctx.font = 'bold 12px monospace';
+ctx.fillText(:: ${z.name.toUpperCase()} ::, z.x + 15, z.y + 25);
+}
+});
+ctx.fillStyle = vehicleSpawner.color;
+ctx.fillRect(vehicleSpawner.x - 20, vehicleSpawner.y - 12, 40, 24);
+ctx.fillStyle = '#fff'; ctx.font = '9px monospace';
+ctx.fillText("MONTURA [E]", vehicleSpawner.x - 25, vehicleSpawner.y - 18);
+ctx.fillStyle = '#ff0055';
+localProjectiles.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill(); });
+Object.keys(remotePlayers).forEach(id => {
+let p = remotePlayers[id];
+ctx.save();
+ctx.translate(p.x, p.y);
+ctx.rotate(p.angle);
+if (p.vehicle) {
+ctx.fillStyle = p.vehicle.color;
+ctx.fillRect(-22, -12, 44, 24);
+} else {
+ctx.fillStyle = p.role === 'FUGITIVE' ? '#ffcc00' : '#00ffcc';
+ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+}
+ctx.restore();
+});
+ctx.save();
+ctx.translate(localPlayer.x, localPlayer.y);
+ctx.rotate(localPlayer.angle);
+if (localPlayer.vehicle) {
+ctx.fillStyle = localPlayer.vehicle.color;
+ctx.fillRect(-22, -12, 44, 24);
+ctx.fillStyle = '#00ffcc'; ctx.fillRect(8, -8, 6, 16);
+} else {
+ctx.fillStyle = localPlayer.role === 'FUGITIVE' ? '#ffcc00' : '#00ffcc';
+ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+ctx.fillStyle = '#ff0055'; ctx.fillRect(10, -2, 10, 4);
+}
+ctx.restore();
+ctx.restore();
+}
+function mainLoop() {
+update();
+draw();
+requestAnimationFrame(mainLoop);
+}
+mainLoop();
